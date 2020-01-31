@@ -43,7 +43,7 @@ class CandidatesChart extends Component {
         svg
             .append('path')
             .attr('d', d3.arc()
-                .innerRadius(100)
+                .innerRadius(radius/1.4)
                 .outerRadius(radius)
                 .startAngle(0)
                 .endAngle(Math.PI * 2))
@@ -105,7 +105,7 @@ class CandidatesChart extends Component {
 
         // Object which defines our base arc structure
         const arcObj = d3.arc()
-            .innerRadius(100)
+            .innerRadius(radius/1.4)
             .outerRadius(radius);
 
         // Compute the position of each group on the pie:
@@ -124,6 +124,25 @@ class CandidatesChart extends Component {
 
         // Add percentages to the donut
         this.addSliceText(svg, data_ready, arcObj);
+
+        const diffSize = 20;
+        const centerText = svg
+            .append("g");
+
+        centerText
+            .attr("font-family", "sans-serif")
+            .attr("font-size", diffSize)
+            .attr("text-anchor", "middle")
+            .attr("font-weight", "bold")
+            .selectAll("text")
+            .data(data_ready)
+            .join("text")
+            .attr("transform", (d, idx) => `translate(0,${(idx* diffSize)})`)
+            .call(text => text.append("tspan")
+                .text(d => d.data.value));
+
+        centerText
+            .attr("transform", `translate(0, ${-((data_ready.length - 1)  * diffSize) /    2})`)
     }
     render() {
         return <div ref={node => this.node = node}>
