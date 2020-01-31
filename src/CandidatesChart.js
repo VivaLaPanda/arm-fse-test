@@ -39,14 +39,52 @@ class CandidatesChart extends Component {
             .attr("in", "SourceGraphic");
     }
 
+    addDropShadow(svg, radius) {
+        svg
+            .append('path')
+            .attr('d', d3.arc()
+                .innerRadius(100)
+                .outerRadius(radius)
+                .startAngle(0)
+                .endAngle(Math.PI * 2))
+            .attr("filter", "url(#dropshadow)")
+            .attr("opacity", .5);
+    }
+
+    buildDonutSlices(svg, data_ready, arcObj, color) {
+
+        svg
+            .selectAll('.arc')
+            .data(data_ready)
+            .enter()
+            .append('path')
+            .attr('d', arcObj)
+            .attr('fill', function(d){ return(color(d.data.key)) });
+    }
+
+    addSliceText(svg, data_ready, arcObj) {
+        svg.append("g")
+            .attr("font-family", "sans-serif")
+            .attr("font-size", 20)
+            .attr("text-anchor", "middle")
+            .attr("font-weight", "bold")
+            .selectAll("text")
+            .data(data_ready)
+            .join("text")
+            .attr("transform", d => `translate(${arcObj.centroid(d)})`)
+            .call(text => text.append("tspan")
+                .text(d => d.data.value + "%")
+                .style('fill', 'white'));
+    }
+
     createDonutChart() {
         const node = this.node;
-        // set the dimensions and margins of the graph
+        // Dimensional constants
         const width = 450;
         const height = 450;
         const margin = 40;
 
-        // The radius of the pieplot is half the width or half the height (smallest one). I subtract a bit of margin.
+        // Half the smaller of the width/height, minus some margin
         const radius = Math.min(width, height) / 2 - margin;
 
         // append the svg object to the div we've referenced as node
@@ -65,50 +103,27 @@ class CandidatesChart extends Component {
             .domain(data)
             .range(["#98abc5", "#8a89a6", "#7b6888", "#6b486b", "#a05d56"]);
 
+        // Object which defines our base arc structure
+        const arcObj = d3.arc()
+            .innerRadius(100)
+            .outerRadius(radius);
+
         // Compute the position of each group on the pie:
         const pie = d3.pie()
             .value(function(d) {return d.value; });
         const data_ready = pie(d3.entries(data));
 
-        const arcObj = d3.arc()
-            .innerRadius(100)
-            .outerRadius(radius);
+        // Initialize the filter for the drop shadow
+        this.createFilter(svg);
 
+        // Create the drop shadow
+        this.addDropShadow(svg, radius);
 
-        svg
-            .append('path')
-            .attr('d', d3.arc()
-                .innerRadius(100)
-                .outerRadius(radius)
-                .startAngle(0)
-                .endAngle(Math.PI * 2))
-            .attr("filter", "url(#dropshadow)")
-            .attr("opacity", .5);
+        // Build the donut base
+        this.buildDonutSlices(svg, data_ready, arcObj, color);
 
-        // Build the pie chart: Basically, each part of the pie is a path that we build using the arc function.
-        svg
-            .selectAll('.arc')
-            .data(data_ready)
-            .enter()
-            .append('path')
-            .attr('d', arcObj)
-            .attr('fill', function(d){ return(color(d.data.key)) });
-
-        // Add the percentages
-        svg.append("g")
-            .attr("font-family", "sans-serif")
-            .attr("font-size", 20)
-            .attr("text-anchor", "middle")
-            .attr("font-weight", "bold")
-            .selectAll("text")
-            .data(data_ready)
-            .join("text")
-            .attr("transform", d => `translate(${arcObj.centroid(d)})`)
-            .call(text => text.append("tspan")
-                .text(d => d.data.value + "%")
-                .style('fill', 'white'));
-
-        this.createFilter(svg)
+        // Add percentages to the donut
+        this.addSliceText(svg, data_ready, arcObj);
     }
     render() {
         return <div ref={node => this.node = node}>
