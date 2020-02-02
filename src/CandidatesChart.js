@@ -59,7 +59,7 @@ class CandidatesChart extends Component {
             .enter()
             .append('path')
             .attr('d', arcObj)
-            .attr('fill', function(d){ return(color(d.data.key)) });
+            .attr('fill', (d) => color(d.data.key));
     }
 
     addSliceText(svg, data_ready, arcObj) {
@@ -77,12 +77,85 @@ class CandidatesChart extends Component {
                 .style('fill', 'white'));
     }
 
+    addDiffText(svg, diff_data_ready, color) {
+        const diffSize = 30;
+        const centerText = svg
+            .append("g");
+
+        centerText
+            .selectAll("text")
+            .data(diff_data_ready)
+            .join("text")
+            .attr("transform", (d, idx) => `translate(0,${(idx* diffSize)})`)
+            .call(text => text.append("tspan")
+                .text(d => (d.data.value > 0) ? "▲" : "▼"))
+                .style('fill', d => color(d.data.key));
+
+        centerText
+            .attr("font-family", "sans-serif")
+            .attr("font-size", diffSize)
+            .attr("text-anchor", "middle")
+            .attr("font-weight", "bold")
+            .selectAll("text")
+            .data(diff_data_ready)
+            .join("text")
+            .attr("transform", (d, idx) => `translate(0,${(idx* diffSize)})`)
+            .call(text => text.append("tspan")
+                .text(d => d.data.value + "%"));
+
+        centerText
+            .attr("transform", `translate(0, ${-((diff_data_ready.length - 1)  * diffSize) /    2})`)
+    }
+
+    floatToPercent(floatInput) {
+        return Math.round(100 * floatInput)
+    }
+
+    getPercentage(weekData) {
+        // We could iterate over the keys here, but I think it makes more sense to assume we only care about these
+        // keys, other data is likely not relevant
+        const sum = weekData.new + weekData.screened + weekData.interviewed + weekData.assignment;
+        return {
+            "new": this.floatToPercent(weekData.new / sum),
+            "screened": this.floatToPercent(weekData.screened / sum),
+            "interviewed": this.floatToPercent(weekData.interviewed / sum),
+            "assignment": this.floatToPercent(weekData.assignment / sum)
+        };
+    }
+
+    getDiff(thisWeek, lastWeek) {
+        const diffs = {
+            "new": this.floatToPercent((thisWeek.new - lastWeek.new)/lastWeek.new),
+            "screened": this.floatToPercent((thisWeek.screened - lastWeek.screened)/lastWeek.screened),
+            "interviewed": this.floatToPercent((thisWeek.interviewed - lastWeek.interviewed)/lastWeek.interviewed),
+            "assignment": this.floatToPercent((thisWeek.assignment - lastWeek.assignment)/lastWeek.assignment)
+        };
+
+        // TODO: Check this doesn't die
+        Object.keys(diffs).forEach(function(elem, idx) {
+            if (diffs[elem] === 0) {
+                delete diffs[elem];
+            }
+        });
+
+        return diffs;
+    }
+
     createDonutChart() {
         const node = this.node;
         // Dimensional constants
-        const width = 450;
+        const width = 700;
         const height = 450;
         const margin = 40;
+
+        // Create dummy data
+        // const data = {a: 9, b: 20, c:30, d:8, e:12};
+        const data = [
+            {"new":400, "screened": 150, "interviewed": 25, "assignment": 100},
+            {"new":450, "screened": 100, "interviewed": 30, "assignment": 100},
+        ];
+
+        const latestWeek = data.length - 1;
 
         // Half the smaller of the width/height, minus some margin
         const radius = Math.min(width, height) / 2 - margin;
@@ -95,12 +168,9 @@ class CandidatesChart extends Component {
             .append("g")
             .attr("transform", "translate(" + width / 2 + "," + height / 2 + ")");
 
-        // Create dummy data
-        const data = {a: 9, b: 20, c:30, d:8, e:12};
-
         // set the color scale
         const color = d3.scaleOrdinal()
-            .domain(data)
+            .domain([0,100])
             .range(["#98abc5", "#8a89a6", "#7b6888", "#6b486b", "#a05d56"]);
 
         // Object which defines our base arc structure
@@ -111,7 +181,8 @@ class CandidatesChart extends Component {
         // Compute the position of each group on the pie:
         const pie = d3.pie()
             .value(function(d) {return d.value; });
-        const data_ready = pie(d3.entries(data));
+        const data_ready = pie(d3.entries(this.getPercentage(data[latestWeek]))); // Percentages for latest week
+        const diff_data_ready = pie(d3.entries(this.getDiff(data[latestWeek], data[latestWeek-1]))); // Diffs
 
         // Initialize the filter for the drop shadow
         this.createFilter(svg);
@@ -125,24 +196,34 @@ class CandidatesChart extends Component {
         // Add percentages to the donut
         this.addSliceText(svg, data_ready, arcObj);
 
-        const diffSize = 20;
-        const centerText = svg
-            .append("g");
+        // Add the diffs
+        this.addDiffText(svg, diff_data_ready, color);
 
-        centerText
-            .attr("font-family", "sans-serif")
-            .attr("font-size", diffSize)
-            .attr("text-anchor", "middle")
-            .attr("font-weight", "bold")
-            .selectAll("text")
+        // Add one dot in the legend for each name.
+        const size = 20;
+        const xOffset = 200;
+        const yOffset = -180;
+        svg.selectAll("legend_dots")
             .data(data_ready)
-            .join("text")
-            .attr("transform", (d, idx) => `translate(0,${(idx* diffSize)})`)
-            .call(text => text.append("tspan")
-                .text(d => d.data.value));
+            .enter()
+            .append("rect")
+            .attr("x", xOffset)
+            .attr("y", function(d,i){ return yOffset + i*(size+5)}) // 100 is where the first dot appears. 25 is the distance between dots
+            .attr("width", size)
+            .attr("height", size)
+            .style("fill", function(d){ return color(d.data.key)})
 
-        centerText
-            .attr("transform", `translate(0, ${-((data_ready.length - 1)  * diffSize) /    2})`)
+        // Add one dot in the legend for each name.
+        svg.selectAll("DataLabels")
+            .data(data_ready)
+            .enter()
+            .append("text")
+            .attr("x", xOffset + size*1.2)
+            .attr("y", function(d,i){ return yOffset + i*(size+5) + (size/2)}) // 100 is where the first dot appears. 25 is the distance between dots
+            .style("fill", "black")
+            .text(function(d){ return d.data.key})
+            .attr("text-anchor", "left")
+            .style("alignment-baseline", "middle")
     }
     render() {
         return <div ref={node => this.node = node}>
