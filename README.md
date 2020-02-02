@@ -1,3 +1,11 @@
+# Arm Full Stack Engineer Test
+
+## Notes
+* The text/example didn't specify whether the diffs should be in percentage,
+or percentage points, so I did percent change.
+* The example used the up/down arrows inconsistently so I assumed
+normal up for positive down for negative
+
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
 ## Available Scripts
