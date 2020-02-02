@@ -74,6 +74,7 @@ class CandidatesChart extends Component {
             .attr("transform", d => `translate(${arcObj.centroid(d)})`)
             .call(text => text.append("tspan")
                 .text(d => d.data.value + "%")
+                .attr("y", "0.4em")
                 .style('fill', 'white'));
     }
 
@@ -105,6 +106,34 @@ class CandidatesChart extends Component {
 
         centerText
             .attr("transform", `translate(0, ${-((diff_data_ready.length - 1)  * diffSize) /    2})`)
+    }
+
+    addLegend(svg, data_ready, color) {
+        // Add one dot in the legend for each name.
+        const size = 20;
+        const xOffset = 200;
+        const yOffset = -180;
+        svg.selectAll("legend_dots")
+            .data(data_ready)
+            .enter()
+            .append("rect")
+            .attr("x", xOffset)
+            .attr("y", function(d,i){ return yOffset + i*(size+5)}) // 100 is where the first dot appears. 25 is the distance between dots
+            .attr("width", size)
+            .attr("height", size)
+            .style("fill", function(d){ return color(d.data.key)})
+
+        // Add one dot in the legend for each name.
+        svg.selectAll("DataLabels")
+            .data(data_ready)
+            .enter()
+            .append("text")
+            .attr("x", xOffset + size*1.2)
+            .attr("y", function(d,i){ return yOffset + i*(size+5) + (size/2)}) // 100 is where the first dot appears. 25 is the distance between dots
+            .style("fill", "black")
+            .text(function(d){ return d.data.key})
+            .attr("text-anchor", "left")
+            .style("alignment-baseline", "middle")
     }
 
     floatToPercent(floatInput) {
@@ -199,31 +228,8 @@ class CandidatesChart extends Component {
         // Add the diffs
         this.addDiffText(svg, diff_data_ready, color);
 
-        // Add one dot in the legend for each name.
-        const size = 20;
-        const xOffset = 200;
-        const yOffset = -180;
-        svg.selectAll("legend_dots")
-            .data(data_ready)
-            .enter()
-            .append("rect")
-            .attr("x", xOffset)
-            .attr("y", function(d,i){ return yOffset + i*(size+5)}) // 100 is where the first dot appears. 25 is the distance between dots
-            .attr("width", size)
-            .attr("height", size)
-            .style("fill", function(d){ return color(d.data.key)})
-
-        // Add one dot in the legend for each name.
-        svg.selectAll("DataLabels")
-            .data(data_ready)
-            .enter()
-            .append("text")
-            .attr("x", xOffset + size*1.2)
-            .attr("y", function(d,i){ return yOffset + i*(size+5) + (size/2)}) // 100 is where the first dot appears. 25 is the distance between dots
-            .style("fill", "black")
-            .text(function(d){ return d.data.key})
-            .attr("text-anchor", "left")
-            .style("alignment-baseline", "middle")
+        // Add legend
+        this.addLegend(svg, data_ready, color)
     }
     render() {
         return <div ref={node => this.node = node}>
